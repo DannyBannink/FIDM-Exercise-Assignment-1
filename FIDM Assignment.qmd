@@ -1,0 +1,192 @@
+---
+title: "Assigment - kNN DIY"
+author:
+  - Danny Bannink (Author)
+  - Teun Vlassak (Reviewer)
+date: 
+```{r}
+format(Sys.time(), '%d %B, %Y')
+```
+
+
+output:
+   html_notebook:
+    toc: true
+    toc_depth: 2
+---
+## Setup library
+
+```{r}
+install.packages("XML")
+install.packages("rvest")
+install.packages("GGally")
+library(tidyverse)
+library(XML)
+library(rvest)
+library(GGally)
+```
+```{r}
+install.packages("corrplot")
+library("corrplot")
+```
+
+### Data Understanding
+
+```{r}
+rdf <- as.data.frame(read_html("https://github.com/HAN-M3DM-Data-Mining/data-mining-s1y2223-DannyBannink/blob/master/datasets/KNN-occupancy.csv") %>% html_table(fill=TRUE))
+print(rdf) # Look at the results of the gained data
+```
+
+### Data Preperation
+# Removing 1st column since it has no value
+```{r}
+cdf <- rdf[,colSums(is.na(rdf))<nrow(rdf)] # Removing first column since it doesn't add any value.
+print(cdf) # Look at the new table to test if the codeline works.
+```
+
+# Renaming columnnames so all headers are true
+```{r}
+colnames(cdf)
+names(cdf)[1] <- "Date"
+names(cdf)[2] <- "Temperature"
+names(cdf)[3] <- "Humidity"
+names(cdf)[4] <- "Light"
+names(cdf)[5] <- "CO2"
+names(cdf)[6] <- "Humidity_Ratio"
+names(cdf)[7] <- "Occupancy"
+head(cdf)
+```
+
+# Removing 2nd row since there is now a "character" within the dataset which makes the dataframe unusable for analysis
+```{r}
+knn <- cdf[-1,]
+head(knn)
+```
+
+
+## Changing data format from charachter to numeric
+```{r}
+knn$Temperature <- as.numeric(knn$Temperature)
+knn$Humidity <- as.numeric(knn$Humidity)
+knn$Light <- as.numeric(knn$Light)
+knn$CO2 <- as.numeric(knn$CO2)
+knn$Humidity_Ratio <- as.numeric(knn$Humidity_Ratio)
+knn$Occupancy <- as.numeric(knn$Occupancy) 
+```
+
+## Getting rid of the 'date' column in order to be able to plot a correlationdiagram
+```{r}
+knn1 <- select(knn, -1) # Selecting the whole dataframe minus the 'date' column
+head(knn1) # Checking if the codeline works
+format(knn1) # To see if all the needed values are numeric (requirement for plotting the data)
+```
+
+
+## Summary knn measurements
+```{r}
+summary(knn[c("Temperature", "Humidity", "Light", "CO2", "Humidity_Ratio")])
+```
+## Adjusting datatype of 'Occupancy' to 'factor' 
+```{r}
+knn2 <- knn$Occupancy <- factor(knn$Occupancy, levels = c("0", "1"), labels = c("Empty", "Occupied")) %>% relevel("Occupied")
+head(knn2, 10)
+knnlabel <- knn2
+```
+
+## Counts for Occupancy label
+```{r}
+cntDiag <- table(knn$Occupancy)
+propDiag <- round(prop.table(cntDiag) * 100 , digits = 1)
+
+cntDiag
+```
+## Prop diagram
+```{r}
+propDiag
+```
+```{r}
+str(knn1)
+```
+
+## Normalize differences in ranges per column
+```{r}
+normalize <- function(x) { # Function takes in a vector
+  return ((x - min(x)) / (max(x) - min(x))) # distance of item value - minimum vector value divided by the range of all vector values
+}
+
+testSet1 <- c(1:5)
+testSet2 <- c(1:5) * 10
+
+cat("testSet1:", testSet1, "\n")
+```
+```{r}
+cat("testSet2:", testSet2, "\n")
+```
+```{r}
+cat("Normalized testSet1:", normalize(testSet1), "\n")
+```
+```{r}
+cat("Normalized testSet2:", normalize(testSet2))
+```
+## Test normalization function
+```{r}
+nrow <- dim(knn1)[5]
+knn3_n <- sapply(5:nrow,
+                    function(x) {
+  normalize(knn1[,x])
+}) %>% as.data.frame()
+
+summary(knn3_n[c("Temperature", "Humidity", "Light", "CO2", "Humidity_Ratio")])
+```
+```{r}
+str(knn1)
+```
+
+
+### Data Modelling
+# Check occupancy if light is 0
+```{r}
+nrow(knn[knn$Light == 0 & knn$Occupancy == 0,]) ## Total count when there is 0 Occupancy compared to 'Light' (5160)
+```
+
+```{r}
+knn %>% count(Light) ## Amount of total '0 values' in column 'Light' (5160)
+```
+
+
+
+
+```{r}
+model1 <- glm(Occupancy~Temperature+Humidity+Light+CO2+Humidity_Ratio, family = binomial, data=knn3)
+model1
+```
+
+
+## Correlation Matrix
+```{r}
+ggcorrplot(cor(knn), hc.order = TRUE, type = "lower") # Here you can see that there is a big correlation between the amount of light and the occupation of the office. 
+```
+
+## Confusion matrix
+```{r}
+levels(knn3$Occupancy)=0:1
+head(knn3$Occupancy)
+table(knn3$Occupancy)
+```
+## Multiple regression
+```{r}
+model1 <- lm(Occupancy~Temperature+Humidity+Light+CO2+Humidity_Ratio, data=knn3)
+summary(model1)
+```
+
+## Filtering data
+```{r}
+knn1 <- knn %>% filter(Light > 0) ## Deleting all 0 values within the column 'Light' since no occupation is there if there's no Light
+head(knn1) %>% view(knn1) ## To see if the codeline worked (It worked)
+```
+
+## Check if  filtering the '0 values'  in column Light worked
+```{r}
+knn1 %>% count(Light) ## Amount of total '0' values in column 'Light'
+## It worked
+```
