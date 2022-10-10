@@ -1,3 +1,14 @@
+---
+title: "Assignment - Naive Bayes DIY, reviewed version"
+author:
+  - Danny Bannink (Reviewer)
+  - Teun Vlassak (Author)
+date: 
+```{r}
+format(Sys.time(), '%d %B, %Y')
+```
+---
+
 ```{r}
 library(tidyverse)
 library(class)
@@ -11,7 +22,7 @@ library(e1071)
 
 ```{r}
 rawdf <- (NB_fakenews)
-head(rawdf)
+head(rawdf) # In the sabotaged version, Teun made a mistake were the 'head-function' would list out only 1 column of the datatable instead of all.
 class(rawdf)
 ```
 
@@ -33,7 +44,7 @@ wordcloud(Fake$text, max.words = 20, scale = c(4, 0.8), colors= c("lightsteelblu
 ##Preparation
 ```{r}
 rawCorpus <- Corpus(VectorSource(rawdf$text))
-inspect(rawCorpus[1:5])
+inspect(rawCorpus[1:5]) # The ratio of the sabotaged version was '1:3' instead of the to be used '1:5'. 
 ```
 
 ```{r}
@@ -57,6 +68,7 @@ head(trainIndex)
 ```
 
 ```{r}
+# In the original sabotaged version, Teun put a '2' within the brackets of line 72, 73, 80 and 81. This added no value and caused the code to not work properly. I deleted this '2's'. 
 trainDF <- rawdf[trainIndex, ]
 testDF <- rawdf[-trainIndex, ]
 
@@ -70,7 +82,7 @@ testDTM <- cleanDTM[-trainIndex, ]
 ```
 
 ```{r}
-freqWords <- trainDTM %>% findFreqTerms(300)
+freqWords <- trainDTM %>% findFreqTerms(300) # In th sabotaged version, Teun put in the mistake in which the value of the 'findFreqTerms' function was much lower than the shown '300'. 
 trainDTM <-  DocumentTermMatrix(trainCorpus, list(dictionary = freqWords))
 testDTM <-  DocumentTermMatrix(testCorpus, list(dictionary = freqWords))
 ```
